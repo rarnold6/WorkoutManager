@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/workoutActivity"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    tools:context=".WorkoutActivity">
+
+    <TextView
+        android:id="@+id/tvWorkoutPhase"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your workout starts in"
+        android:textSize="24sp"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="48dp" />
+
+    <!-- Countdown TextView -->
+    <TextView
+        android:id="@+id/tvSecondsLeft"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="10"
+        android:textSize="96sp"
+        android:textColor="@android:color/holo_red_dark"
+        android:textStyle="bold"
+        app:layout_constraintTop_toBottomOf="@id/tvWorkoutPhase"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- Abort Workout Button -->
+    <Button
+        android:id="@+id/btnAbortWorkout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Abort Workout"
+        android:backgroundTint="@android:color/holo_red_light"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/tvSecondsLeft"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="64dp"
+        android:layout_marginStart="32dp"
+        app:layout_constraintEnd_toStartOf="@id/btnExtendTimer"
+        android:layout_marginEnd="16dp" />
+
+    <!-- Extend Timer Button -->
+    <Button
+        android:id="@+id/btnExtendTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Extend Timer"
+        android:backgroundTint="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        app:layout_constraintTop_toBottomOf="@id/tvSecondsLeft"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="64dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintStart_toEndOf="@id/btnAbortWorkout"
+        android:layout_marginStart="16dp" />
+
+    <ImageButton
+        android:id="@+id/btnPausePlay"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:src="@android:drawable/ic_media_pause"
+        android:contentDescription="Pause/Play"
+        android:background="@drawable/button_round"
+        android:layout_marginTop="154dp"
+        app:layout_constraintTop_toBottomOf="@id/tvSecondsLeft"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="32dp"
+        android:layout_marginStart="32dp"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="48dp"
+        android:padding="16dp"
+        android:scaleType="centerInside"
+        app:tint="@color/black" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

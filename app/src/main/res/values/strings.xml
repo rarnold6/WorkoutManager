@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Workout Manager</string>
+    <string name="duration_exercise">DURATION_EXERCISE</string>
+    <string name="recovery_time">RECOVERY_TIME</string>
+    <string name="break_duration">BREAK_DURATION</string>
+    <string name="make_these_settings_to_my_standard_settings">Make these settings to my standard settings.</string>
+    <string name="channel_id">workout_channel</string>
+    <string name="channel_name">Workout notification</string>
+</resources>
