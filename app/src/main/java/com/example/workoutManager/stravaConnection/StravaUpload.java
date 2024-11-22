@@ -29,8 +29,8 @@ import java.util.concurrent.Executors;
 
 public class StravaUpload {
 
-    private static final String CLIENT_ID = "139499"; // Replace with your Strava Client ID
-    private static final String CLIENT_SECRET = "455de87651d529a98f6aa71654582301ae418469"; // Replace with your Strava Client Secret
+    private static final String CLIENT_ID = "xxx"; // Replace with your Strava Client ID
+    private static final String CLIENT_SECRET = "xxx"; // Replace with your Strava Client Secret
     private static final String REDIRECT_URI = "workoutmanager://workoutmanager"; // Replace with your redirect URI
     private static final String TAG = "StravaActivity";
 
@@ -208,7 +208,7 @@ public class StravaUpload {
 
         executorUpload.submit(() -> {
             try {
-                if(accessToken.isEmpty()){
+                if(accessToken.isEmpty() || tokenLatch.getCount()>0){
                     tokenLatch.await();
                 }
 

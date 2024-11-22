@@ -4,7 +4,7 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2024-11-07T20:21:12.560858300Z">
+        <DropdownSelection timestamp="2024-11-08T20:26:06.417999200Z">
           <Target type="DEFAULT_BOOT">
             <handle>
               <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Arnol\.android\avd\Samsung_Galaxy_S8_API_28.avd" />

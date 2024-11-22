@@ -4,6 +4,7 @@ import android.content.Context;
 import androidx.security.crypto.MasterKeys;
 import androidx.security.crypto.EncryptedSharedPreferences;
 import android.content.SharedPreferences;
+import android.util.Log;
 
 public class SecureStorageHelper {
     private static final String PREFS_FILE = "secure_prefs";
@@ -23,6 +24,7 @@ public class SecureStorageHelper {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (Exception e) {
+            Log.e("SecureStorageHelper", "Error initializing EncryptedSharedPreferences", e);
             e.printStackTrace();
         }
     }
