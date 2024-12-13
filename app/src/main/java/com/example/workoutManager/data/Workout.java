@@ -46,6 +46,21 @@ public class Workout implements Serializable {
     private int currentNumberOfExercise;
     private int currentNumberOfSet;
 
+    private long startTimestamp;
+
+    private long endTimestamp;
+
+    public long getStartTimestamp() {
+        return startTimestamp;
+    }
+
+    public long getEndTimestamp() {
+        return endTimestamp;
+    }
+
+    public void setEndTimestamp(long endTimestamp) {
+        this.endTimestamp = endTimestamp;
+    }
 
 
     public enum WorkoutPhase {
@@ -55,7 +70,7 @@ public class Workout implements Serializable {
 
     private WorkoutPhase currentPhase;
 
-    public Workout(int exerciseDuration, int recoveryTime, int breakTime, int numberOfSets, int numberOfExercisesPerSet) {
+    public Workout(int exerciseDuration, int recoveryTime, int breakTime, int numberOfSets, int numberOfExercisesPerSet, long startTimestamp) {
         this.exerciseDuration = exerciseDuration;
         this.recoveryTime = recoveryTime;
         this.breakTime = breakTime;
@@ -63,6 +78,8 @@ public class Workout implements Serializable {
         this.numberOfExercisesPerSet = numberOfExercisesPerSet;
         this.currentNumberOfExercise = 0;
         this.currentNumberOfSet = 1;
+        this.startTimestamp = startTimestamp;
+        this.endTimestamp = -1;
         // Set the default phase
         currentPhase = WorkoutPhase.WARMUP;
     }

@@ -28,13 +28,37 @@ public class SecureStorageHelper {
             e.printStackTrace();
         }
     }
-
-    public void saveStravaData(String accessToken, String refreshToken, int athleteId, long expirationDate) {
+    public void saveStravaData(String accessToken, String refreshToken, int athleteId, long expirationDate, String username) {
         SharedPreferences.Editor editor = encryptedPrefs.edit();
         editor.putString("access_token", accessToken);
         editor.putString("refresh_token", refreshToken);
         editor.putInt("athlete_id", athleteId);
         editor.putLong("expiration_date", expirationDate);
+        editor.putString("username", username);
+        editor.apply();  // Apply changes asynchronously
+    }
+
+    public void saveSensor(String sensorName, String address){
+        SharedPreferences.Editor editor = encryptedPrefs.edit();
+        editor.putString("sensor_name", sensorName);
+        editor.putString("sensor_address", address);
+        editor.apply();
+    }
+
+    public void resetSensor(){
+        SharedPreferences.Editor editor = encryptedPrefs.edit();
+        editor.putString("sensor_name", "");
+        editor.putString("sensor_address", "");
+        editor.apply();
+    }
+
+    public void resetStravaData(){
+        SharedPreferences.Editor editor = encryptedPrefs.edit();
+        editor.putString("access_token", "");
+        editor.putString("refresh_token", "");
+        editor.putInt("athlete_id", -1);
+        editor.putLong("expiration_date", -1);
+        editor.putString("username", "");
         editor.apply();  // Apply changes asynchronously
     }
 
@@ -64,6 +88,10 @@ public class SecureStorageHelper {
         return encryptedPrefs.getLong("expiration_date", 0);
     }
 
+    public String getUsername() {
+        return encryptedPrefs.getString("username", "");
+    }
+
     public int getDurationExercise() {
         return encryptedPrefs.getInt("duration_exercise", 40);
     }
@@ -84,4 +112,11 @@ public class SecureStorageHelper {
         return encryptedPrefs.getInt("number_of_sets", 2);
     }
 
+    public String getHeartRateSensor()  {
+        return encryptedPrefs.getString("sensor_name", "");
+    }
+
+    public String getHeartRateSensorAddress()  {
+        return encryptedPrefs.getString("sensor_address", "");
+    }
 }

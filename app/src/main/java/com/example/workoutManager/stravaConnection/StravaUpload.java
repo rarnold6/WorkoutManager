@@ -7,6 +7,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.example.workoutManager.Settings;
+import com.example.workoutManager.StravaConnectActivity;
 import com.example.workoutManager.data.Workout;
 
 import org.json.JSONException;
@@ -50,9 +52,11 @@ public class StravaUpload {
 
     private final ExecutorService executorRefreshToken = Executors.newSingleThreadExecutor();
 
-    private final ExecutorService executorUpload = Executors.newSingleThreadExecutor();;
+    private final ExecutorService executorUpload = Executors.newSingleThreadExecutor();
 
-    private final CountDownLatch tokenLatch = new CountDownLatch(1);
+    private CountDownLatch tokenLatch = new CountDownLatch(1);
+
+    private boolean accessTokenExpired = false;
 
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
@@ -62,13 +66,16 @@ public class StravaUpload {
         
         retrieveStoredInformation();
 
-        if(accessToken.isEmpty()) {
-            authenticateUser();
-        } else if(new Date(new Date().getTime() + 5*60*1000).after(new Date(expirationDate*1000))){
+        if(new Date(new Date().getTime() + 5*60*1000).after(new Date(expirationDate*1000))){
+            accessTokenExpired = true;
             refreshAccessToken();
+            uploadWorkout();
+        } else {
+            accessTokenExpired = false;
+            uploadWorkout();
         }
 
-        uploadWorkout();
+
 
     }
 
@@ -186,8 +193,6 @@ public class StravaUpload {
                 Log.e(TAG, "Error exchanging authorization code for token", e);
             }
         });
-
-
     }
 
     private void storeTokensAndExpireDates(JSONObject jsonResponse) throws JSONException {
@@ -197,18 +202,19 @@ public class StravaUpload {
         expirationDate = jsonResponse.getLong("expires_at");
 
         JSONObject athlete = jsonResponse.optJSONObject("athlete");
+        String username = "";
         if(athlete != null){
             athleteId = jsonResponse.optInt("id");
+            username = jsonResponse.optString("username");
         }
 
-        secureStorageHelper.saveStravaData(accessToken,refreshToken,athleteId,expirationDate);
+        secureStorageHelper.saveStravaData(accessToken,refreshToken,athleteId,expirationDate,username);
     }
 
     private void uploadWorkout(){
-
         executorUpload.submit(() -> {
             try {
-                if(accessToken.isEmpty() || tokenLatch.getCount()>0){
+                if(tokenLatch.getCount()>0 && accessTokenExpired){
                     tokenLatch.await();
                 }
 
@@ -283,6 +289,7 @@ public class StravaUpload {
                 Log.e(TAG, "Error uploading activity", e);
             } finally {
                 countDownLatch.countDown();
+                tokenLatch = new CountDownLatch(1);
                 executor.shutdown();  // Shut down the executor to avoid resource leaks
 
 

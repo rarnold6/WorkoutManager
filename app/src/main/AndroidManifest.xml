@@ -10,22 +10,35 @@
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <uses-permission android:name="android.permission.BLUETOOTH"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/> <!-- For scanning BLE -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true"/>
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/app_icon"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/app_icon_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WorkoutManager"
         tools:targetApi="31">
+        <service android:name=".heartFrequencyDevice.HeartRateService"
+            android:enabled="true"
+            android:exported="false"/>
         <activity
             android:name=".WorkoutScheduleActivity"
             android:exported="false" />
-        <activity
-            android:name=".WorkoutActivity"
-            android:screenOrientation="portrait"
+        <activity android:name=".Settings"
+            android:exported="false" />
+        <activity android:name=".heartFrequencyDevice.BLEScannerActivity"
+            android:exported="false" />
+        <activity android:name=".StravaConnectActivity"
             android:exported="true"
             android:launchMode="singleTask">
             <intent-filter android:label="Strava OAuth">
@@ -38,6 +51,13 @@
                     android:host="workoutmanager"
                     android:scheme="workoutmanager" />
             </intent-filter>
+
+        </activity>
+        <activity
+            android:name=".WorkoutActivity"
+            android:screenOrientation="portrait"
+            android:exported="true">
+
         </activity>
         <activity
             android:name=".MainActivity"

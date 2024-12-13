@@ -1,15 +1,29 @@
 package com.example.workoutManager;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -17,9 +31,47 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.workoutManager.data.Workout;
+import com.example.workoutManager.heartFrequencyDevice.BLEScannerActivity;
+import com.example.workoutManager.heartFrequencyDevice.HeartRateService;
 import com.example.workoutManager.stravaConnection.SecureStorageHelper;
 
+import java.sql.Time;
+import java.util.Date;
+
 public class MainActivity extends AppCompatActivity {
+
+    private TextView tvBluetoothMain;
+
+    private ImageView ivBluetoothMain;
+
+    private LinearLayout llBluetoothMain;
+
+    private BroadcastReceiver heartRateReceiver;
+
+    private boolean isBound = false;
+
+    private HeartRateService heartRateService;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            HeartRateService.LocalBinder binder = (HeartRateService.LocalBinder) service;
+            heartRateService = binder.getService();
+            isBound = true;
+            System.out.println("Service connected.");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+            System.out.println("Service disconnected.");
+        }
+    };
+
+    private boolean bluetoothConnectionExists = false;
+
+    private boolean currentlyDisconnecting = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,15 +84,81 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
         registerButton();
+        registerBluetooth();
     }
+
+    private void registerBluetooth() {
+        llBluetoothMain = (LinearLayout) findViewById(R.id.llBluetoothMain);
+        ivBluetoothMain = (ImageView) findViewById(R.id.ivBluetoothMain);
+        tvBluetoothMain = (TextView) findViewById(R.id.tvBluetoothMain);
+
+        heartRateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.example.BLE_HEART_RATE_UPDATE".equals(intent.getAction())) {
+                    if(!bluetoothConnectionExists && !currentlyDisconnecting){
+                        ivBluetoothMain.setImageResource(R.drawable.bluetooth_connected);
+                        bluetoothConnectionExists = true;
+                    }
+
+                    int heartRate = intent.getIntExtra("HEART_RATE", -1);
+                    //System.out.println("Received Heart Rate: " + heartRate);
+                    // Update UI here
+                    if(!currentlyDisconnecting) {
+                        tvBluetoothMain.setText("" + heartRate);
+                    }
+                }
+            }
+        };
+
+        llBluetoothMain.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
+                if(secureStorageHelper.getHeartRateSensorAddress().isEmpty()){
+                    Intent intent = new Intent(MainActivity.this, BLEScannerActivity.class);
+                    startActivity(intent);
+                } else if(!bluetoothConnectionExists){
+                    // if there is no bluetooth connection yet
+                    currentlyDisconnecting = false;
+                    BluetoothDevice bleDevice = getSavedDevice(secureStorageHelper.getHeartRateSensorAddress());
+                    Intent serviceIntent = new Intent(MainActivity.this, HeartRateService.class);
+                    serviceIntent.putExtra("DEVICE", bleDevice);
+                    startService(serviceIntent);
+                } else {
+                    if (isBound && heartRateService != null) {
+                        bluetoothConnectionExists = false;
+                        heartRateService.disconnectDevice();
+                        ivBluetoothMain.setImageResource(android.R.drawable.stat_sys_data_bluetooth);
+                        tvBluetoothMain.setText("HF");
+                        currentlyDisconnecting = true;
+                        Toast.makeText(getApplicationContext(), "Disconnected from device", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+    }
+
+    public BluetoothDevice getSavedDevice(String deviceAddress) {
+        if (deviceAddress != null) {
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(deviceAddress);
+            System.out.println("Retrieved device: " + deviceAddress);
+            return device;
+        } else {
+            System.out.println("No saved device found.");
+            return null;
+        }
+    }
+
 
     private void registerButton(){
         Button btnStartWorkout = (Button) findViewById(R.id.btnStartWorkout);
-        ImageButton btnCalendar = (ImageButton) findViewById(R.id.btnCalendar);
-        btnCalendar.setOnClickListener(new View.OnClickListener() {
+        ImageButton btnSettings = (ImageButton) findViewById(R.id.btnSettings);
+        btnSettings.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, WorkoutScheduleActivity.class);
+                Intent intent = new Intent(MainActivity.this, Settings.class);
                 startActivity(intent);
             }
         });
@@ -90,7 +208,8 @@ public class MainActivity extends AppCompatActivity {
                     if(cbStandardSettings.isChecked()){
                         secureStorageHelper.saveStandardSettings(durationExercise,recoveryTime,breakDuration,numberOfSets, numberOfExercisesPerSet);
                     }
-                    Workout workout = new Workout(durationExercise,recoveryTime,breakDuration,numberOfSets, numberOfExercisesPerSet);
+
+                    Workout workout = new Workout(durationExercise,recoveryTime,breakDuration,numberOfSets, numberOfExercisesPerSet, new Date().getTime());
                     startWorkout(workout);
                 }
             }
@@ -116,4 +235,44 @@ public class MainActivity extends AppCompatActivity {
                 });
         alertDialog.show();
     }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Intent intent = new Intent(this, HeartRateService.class);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter("com.example.BLE_HEART_RATE_UPDATE");
+        registerReceiver(heartRateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(heartRateReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isBound) {
+            unbindService(serviceConnection);
+            isBound = false;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (isBound && heartRateService != null) {
+            heartRateService.disconnectDevice();
+        }
+    }
+
+
 }

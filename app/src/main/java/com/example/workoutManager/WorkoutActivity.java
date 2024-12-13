@@ -1,17 +1,33 @@
 package com.example.workoutManager;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.IBinder;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
@@ -19,12 +35,51 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.workoutManager.data.Workout;
+import com.example.workoutManager.heartFrequencyDevice.HeartRateService;
+import com.example.workoutManager.stravaConnection.SecureStorageHelper;
 import com.example.workoutManager.stravaConnection.StravaUpload;
 
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class WorkoutActivity extends AppCompatActivity {
+
+    private TextView tvBluetoothWorkout;
+
+    private ImageView ivBluetoothWorkout;
+
+    private LinearLayout llBluetoothWorkout;
+
+    private BroadcastReceiver heartRateReceiver;
+
+    private boolean isBound = false;
+
+    private HeartRateService heartRateService;
+
+    private LinkedHashMap<Long,Integer> heartFrequencyHashMap = new LinkedHashMap<>();
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            HeartRateService.LocalBinder binder = (HeartRateService.LocalBinder) service;
+            heartRateService = binder.getService();
+            isBound = true;
+            System.out.println("Service connected.");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+            System.out.println("Service disconnected.");
+        }
+    };
+
+    private boolean bluetoothConnectionExists = false;
+
+    private boolean currentlyDisconnecting = false;
 
     private Workout workout;
     private TextView tvSecondsLeft;
@@ -50,6 +105,8 @@ public class WorkoutActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        registerBluetooth();
 
         workout = (Workout) getIntent().getSerializableExtra("WORKOUT_OBJECT");
 
@@ -161,6 +218,7 @@ public class WorkoutActivity extends AppCompatActivity {
                         if(workout.getCurrentNumberOfExercise() == workout.getNumberOfExercisesPerSet() && workout.getCurrentNumberOfSet() == workout.getNumberOfSets()){
                             mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.exercise_finished);
                             mediaPlayer.start();
+                            workout.setEndTimestamp(new Date().getTime());
                             new AlertDialog.Builder(WorkoutActivity.this)
                                     .setTitle("Workout Complete")
                                     .setMessage("Congratulations, you've finished your workout!")
@@ -168,6 +226,14 @@ public class WorkoutActivity extends AppCompatActivity {
                                     .setPositiveButton("Upload to Strava", new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
+                                            SecureStorageHelper storageHelper = new SecureStorageHelper(getApplicationContext());
+                                            if(storageHelper.getAccessToken().isEmpty()){
+                                                Intent intent = new Intent(WorkoutActivity.this, StravaConnectActivity.class);
+                                                intent.putExtra("workout",workout);
+                                                startActivity(intent);
+                                                finish();
+                                            }
+
                                             stravaUpload = new StravaUpload(getApplicationContext(), workout);
                                             ExecutorService executor = Executors.newSingleThreadExecutor();
                                             executor.submit(() -> {
@@ -225,6 +291,115 @@ public class WorkoutActivity extends AppCompatActivity {
         timerRunning = false;
     }
 
+    private void registerBluetooth() {
+        llBluetoothWorkout = (LinearLayout) findViewById(R.id.llBluetoothWorkout);
+        ivBluetoothWorkout = (ImageView) findViewById(R.id.ivBluetoothWorkout);
+        tvBluetoothWorkout = (TextView) findViewById(R.id.tvBluetoothWorkout);
+
+
+
+        llBluetoothWorkout.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+
+        heartRateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if ("com.example.BLE_HEART_RATE_UPDATE".equals(intent.getAction())) {
+                    if(!bluetoothConnectionExists && !currentlyDisconnecting){
+                        ivBluetoothWorkout.setImageResource(R.drawable.bluetooth_connected);
+                        bluetoothConnectionExists = true;
+                    }
+                    int heartRate = intent.getIntExtra("HEART_RATE", -1);
+                    switch(workout.getCurrentPhase()){
+                        case RECOVERY:
+                        case BREAK:
+                        case EXERCISE:
+                            long currentDate = new Date().getTime();
+                            heartFrequencyHashMap.put(currentDate,heartRate);
+                            break;
+                        default:
+                            break;
+                    }
+
+                    //System.out.println("Received Heart Rate: " + heartRate);
+                    // Update UI here
+                    if(!currentlyDisconnecting) {
+                        tvBluetoothWorkout.setText("" + heartRate);
+                    }
+                }
+            }
+        };
+
+        llBluetoothWorkout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Animation shake = AnimationUtils.loadAnimation(getApplicationContext(), R.anim.button_animator);
+                llBluetoothWorkout.startAnimation(shake);
+                SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
+                if(secureStorageHelper.getHeartRateSensorAddress().isEmpty()){
+                    Toast.makeText(getApplicationContext(), "Configuration not during workout possible!", Toast.LENGTH_LONG).show();
+                } else if(!bluetoothConnectionExists){
+                    // if there is no bluetooth connection yet
+                    currentlyDisconnecting = false;
+                    BluetoothDevice bleDevice = getSavedDevice(secureStorageHelper.getHeartRateSensorAddress());
+                    Intent serviceIntent = new Intent(WorkoutActivity.this, HeartRateService.class);
+                    serviceIntent.putExtra("DEVICE", bleDevice);
+                    startService(serviceIntent);
+                } else {
+                    if (isBound && heartRateService != null) {
+                        bluetoothConnectionExists = false;
+                        heartRateService.disconnectDevice();
+                        ivBluetoothWorkout.setImageResource(android.R.drawable.stat_sys_data_bluetooth);
+                        tvBluetoothWorkout.setText("HF");
+                        currentlyDisconnecting = true;
+                        Toast.makeText(getApplicationContext(), "Disconnected from device", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+    }
+
+    public BluetoothDevice getSavedDevice(String deviceAddress) {
+        if (deviceAddress != null) {
+            BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(deviceAddress);
+            System.out.println("Retrieved device: " + deviceAddress);
+            return device;
+        } else {
+            System.out.println("No saved device found.");
+            return null;
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Intent intent = new Intent(this, HeartRateService.class);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    @Override
+    protected void onResume() {
+        super.onResume();
+        IntentFilter filter = new IntentFilter("com.example.BLE_HEART_RATE_UPDATE");
+        registerReceiver(heartRateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        unregisterReceiver(heartRateReceiver);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (isBound) {
+            unbindService(serviceConnection);
+            isBound = false;
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -236,14 +411,13 @@ public class WorkoutActivity extends AppCompatActivity {
             mediaPlayer.release();
             mediaPlayer = null;
         }
+        if (isBound && heartRateService != null) {
+            heartRateService.disconnectDevice();
+        }
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        stravaUpload.handleRedirect(intent);
 
-    }
+
 
 
 

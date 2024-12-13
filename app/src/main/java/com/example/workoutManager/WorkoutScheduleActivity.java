@@ -3,20 +3,32 @@ package com.example.workoutManager;
 import android.annotation.SuppressLint;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -24,6 +36,9 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.example.workoutManager.data.WorkoutDate;
 import com.example.workoutManager.database.WorkoutContract;
+import com.example.workoutManager.heartFrequencyDevice.BLEScannerActivity;
+import com.example.workoutManager.heartFrequencyDevice.HeartRateService;
+import com.example.workoutManager.stravaConnection.SecureStorageHelper;
 
 import java.util.Calendar;
 import java.util.LinkedList;
@@ -42,8 +57,9 @@ public class WorkoutScheduleActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
+
         setContentView(R.layout.activity_workout_schedule2);
+        EdgeToEdge.enable(this);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.workoutSchedule), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -56,7 +72,7 @@ public class WorkoutScheduleActivity extends AppCompatActivity {
         btnBack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(WorkoutScheduleActivity.this, MainActivity.class);
+                Intent intent = new Intent(WorkoutScheduleActivity.this, Settings.class);
                 startActivity(intent);
             }
         });
@@ -86,11 +102,10 @@ public class WorkoutScheduleActivity extends AppCompatActivity {
 
         retrieveSchedule();
 
-        ListView lvWorkoutSchedule = (ListView) findViewById(R.id.lvWorkoutSchedule);
-        this.scheduleBaseAdapter = new ScheduleBaseAdapter(getApplicationContext(),workoutDates);
-        lvWorkoutSchedule.setAdapter(this.scheduleBaseAdapter);
 
     }
+
+
 
     private void createNotificationChannel(){
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
@@ -172,7 +187,8 @@ public class WorkoutScheduleActivity extends AppCompatActivity {
                     insertWorkoutDate(workoutDate);
                     workoutDates.add(workoutDate);
                     Utils.setAlarm(getApplicationContext(),calendar, workoutDate.getNotificationId());
-                    scheduleBaseAdapter.updateData(workoutDates);
+                    Intent intent = new Intent(WorkoutScheduleActivity.this,Settings.class);
+                    startActivity(intent);
                     Toast.makeText(this, "Workout schedule saved!", Toast.LENGTH_SHORT).show();
                 } else {
                     Toast.makeText(this, "Date already saved.", Toast.LENGTH_SHORT).show();
@@ -198,4 +214,8 @@ public class WorkoutScheduleActivity extends AppCompatActivity {
         contentValues.put(WorkoutContract.WorkoutEntry.WORKOUT_NOTIFICATION_ID,workoutDate.getNotificationId());
         getContentResolver().insert(WorkoutContract.WorkoutEntry.CONTENT_URI_WORKOUT,contentValues);
     }
+
+
+
+
 }
