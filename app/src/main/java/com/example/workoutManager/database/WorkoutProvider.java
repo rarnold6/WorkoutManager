@@ -20,11 +20,31 @@ public class WorkoutProvider extends ContentProvider {
 
     private static final int URI_WORKOUT_DATES = 100;
     private static final int URI_WORKOUT_DATE_TIME = 101;
+
+    private static final int URI_PREDEFINED_WORKOUT = 102;
+
+    private static final int URI_PREDEFINED_WORKOUT_ITEM = 103;
+
+    private static final int URI_EXERCISES = 104;
+
+    private static final int URI_EXERCISES_ITEM = 105;
+
+    private static final int URI_WORKOUT_EXERCISES = 106;
+
+    private static final int URI_WORKOUT_EXERCISES_ITEM = 107;
+
+
     private static final UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
     static {
         uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, WorkoutContract.PATH_WORKOUT_SCHEDULE, URI_WORKOUT_DATES);
         uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, "workout_schedule/*/*", URI_WORKOUT_DATE_TIME);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, WorkoutContract.PATH_PREDEFINED_WORKOUT, URI_PREDEFINED_WORKOUT);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, "predefined_workout/*/*", URI_PREDEFINED_WORKOUT_ITEM);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, WorkoutContract.PATH_EXERCISES, URI_EXERCISES);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, "exercises/*/*", URI_EXERCISES_ITEM);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, WorkoutContract.PATH_EXERCISES, URI_WORKOUT_EXERCISES);
+        uriMatcher.addURI(WorkoutContract.CONTENT_AUTHORITY, "exercises/*/*", URI_WORKOUT_EXERCISES_ITEM);
     }
 
 

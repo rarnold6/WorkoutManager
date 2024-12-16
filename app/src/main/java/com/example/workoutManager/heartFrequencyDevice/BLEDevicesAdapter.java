@@ -92,4 +92,20 @@ public class BLEDevicesAdapter extends BaseAdapter {
         }
         this.bluetoothDevices.add(device);
     }
+
+    void removeDevice(BluetoothDevice device){
+        int index = -1;
+        for(int i = 0; i < this.bluetoothDevices.size(); i++){
+            BluetoothDevice bleDevice = this.bluetoothDevices.get(i);
+            if(bleDevice.getAddress().equals(device.getAddress())){
+                index = i;
+                break;
+            }
+        }
+        this.bluetoothDevices.remove(index);
+    }
+
+    void removeAllDevices(){
+        this.bluetoothDevices = new LinkedList<>();
+    }
 }

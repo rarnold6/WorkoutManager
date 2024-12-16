@@ -1,5 +1,6 @@
 package com.example.workoutManager;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -9,16 +10,20 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -31,18 +36,23 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.workoutManager.data.Workout;
+import com.example.workoutManager.heartFrequencyDevice.BLEPermissionUtils;
 import com.example.workoutManager.heartFrequencyDevice.BLEScannerActivity;
 import com.example.workoutManager.heartFrequencyDevice.HeartRateService;
 import com.example.workoutManager.stravaConnection.SecureStorageHelper;
 
 import java.sql.Time;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private TextView tvBluetoothMain;
 
     private ImageView ivBluetoothMain;
+
+    private ProgressBar pbBluetoothMain;
 
     private LinearLayout llBluetoothMain;
 
@@ -85,20 +95,26 @@ public class MainActivity extends AppCompatActivity {
         });
         registerButton();
         registerBluetooth();
+        registerSpinner();
     }
 
+    @SuppressLint("NewApi")
     private void registerBluetooth() {
         llBluetoothMain = (LinearLayout) findViewById(R.id.llBluetoothMain);
         ivBluetoothMain = (ImageView) findViewById(R.id.ivBluetoothMain);
         tvBluetoothMain = (TextView) findViewById(R.id.tvBluetoothMain);
+        pbBluetoothMain = (ProgressBar) findViewById(R.id.pbBluetoothMain);
 
         heartRateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if ("com.example.BLE_HEART_RATE_UPDATE".equals(intent.getAction())) {
                     if(!bluetoothConnectionExists && !currentlyDisconnecting){
+                        pbBluetoothMain.setVisibility(View.GONE);
                         ivBluetoothMain.setImageResource(R.drawable.bluetooth_connected);
                         bluetoothConnectionExists = true;
+                        ivBluetoothMain.setVisibility(View.VISIBLE);
+                        tvBluetoothMain.setVisibility(View.VISIBLE);
                     }
 
                     int heartRate = intent.getIntExtra("HEART_RATE", -1);
@@ -107,36 +123,73 @@ public class MainActivity extends AppCompatActivity {
                     if(!currentlyDisconnecting) {
                         tvBluetoothMain.setText("" + heartRate);
                     }
+                } else if ("com.example.BLE_CONNECTED_UPDATE".equals(intent.getAction())) {
+                    System.out.println("RECEIVING BLE CONNECTED");
+                    boolean bleConnectedUpdate = intent.getBooleanExtra("CONNECTED", false);
+                    System.out.println("Received BLE_CONNECTED_UPADTE: " + bleConnectedUpdate);
+                    // Update UI here
+                    if(!bleConnectedUpdate){
+                        pbBluetoothMain.setVisibility(View.GONE);
+                        ivBluetoothMain.setImageResource(android.R.drawable.stat_sys_data_bluetooth);
+                        tvBluetoothMain.setText("HF");
+                        ivBluetoothMain.setVisibility(View.VISIBLE);
+                        tvBluetoothMain.setVisibility(View.VISIBLE);
+                        bluetoothConnectionExists = false;
+                        Toast.makeText(context,"Connection failed. See more in the settings!",Toast.LENGTH_LONG).show();
+                    }
+
                 }
             }
         };
 
+        // Register the BroadcastReceiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.example.BLE_HEART_RATE_UPDATE");
+        filter.addAction("com.example.BLE_CONNECTED_UPDATE");
+        registerReceiver(heartRateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+
         llBluetoothMain.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
-                if(secureStorageHelper.getHeartRateSensorAddress().isEmpty()){
-                    Intent intent = new Intent(MainActivity.this, BLEScannerActivity.class);
-                    startActivity(intent);
-                } else if(!bluetoothConnectionExists){
-                    // if there is no bluetooth connection yet
-                    currentlyDisconnecting = false;
-                    BluetoothDevice bleDevice = getSavedDevice(secureStorageHelper.getHeartRateSensorAddress());
-                    Intent serviceIntent = new Intent(MainActivity.this, HeartRateService.class);
-                    serviceIntent.putExtra("DEVICE", bleDevice);
-                    startService(serviceIntent);
-                } else {
-                    if (isBound && heartRateService != null) {
-                        bluetoothConnectionExists = false;
-                        heartRateService.disconnectDevice();
-                        ivBluetoothMain.setImageResource(android.R.drawable.stat_sys_data_bluetooth);
-                        tvBluetoothMain.setText("HF");
-                        currentlyDisconnecting = true;
-                        Toast.makeText(getApplicationContext(), "Disconnected from device", Toast.LENGTH_SHORT).show();
-                    }
+                if (!BLEPermissionUtils.hasPermissions(getApplicationContext())) {
+                    BLEPermissionUtils.requestPermissions(MainActivity.this);
+                    return; // Exit and wait for the user response
                 }
+
+                clickBluetooth();
             }
         });
+    }
+
+    private void clickBluetooth() {
+        SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
+        if(secureStorageHelper.getHeartRateSensorAddress().isEmpty()){
+            Intent intent = new Intent(MainActivity.this, BLEScannerActivity.class);
+            startActivity(intent);
+        } else if(!bluetoothConnectionExists){
+            // if there is no bluetooth connection yet
+            ivBluetoothMain.setVisibility(View.GONE);
+            tvBluetoothMain.setVisibility(View.GONE);
+            pbBluetoothMain.setVisibility(View.VISIBLE);
+
+            currentlyDisconnecting = false;
+            BluetoothDevice bleDevice = getSavedDevice(secureStorageHelper.getHeartRateSensorAddress());
+            Intent serviceIntent = new Intent(MainActivity.this, HeartRateService.class);
+            serviceIntent.putExtra("DEVICE", bleDevice);
+            startService(serviceIntent);
+        } else {
+            if (isBound && heartRateService != null) {
+                bluetoothConnectionExists = false;
+                heartRateService.disconnectDevice();
+                pbBluetoothMain.setVisibility(View.GONE);
+                ivBluetoothMain.setImageResource(android.R.drawable.stat_sys_data_bluetooth);
+                tvBluetoothMain.setText("HF");
+                ivBluetoothMain.setVisibility(View.VISIBLE);
+                tvBluetoothMain.setVisibility(View.VISIBLE);
+                currentlyDisconnecting = true;
+                Toast.makeText(getApplicationContext(), "Disconnected from device", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     public BluetoothDevice getSavedDevice(String deviceAddress) {
@@ -216,6 +269,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void registerSpinner() {
+        // List of items
+        List<String> items = new ArrayList<>();
+        items.add("Option 1");
+        items.add("Option 2");
+        items.add("Option 3");
+
+        // Set up ArrayAdapter
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_spinner_item, // Default spinner layout
+                items
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+
+        // Apply adapter to spinner
+        Spinner dropdownSpinner = findViewById(R.id.spWorkout);
+        dropdownSpinner.setAdapter(adapter);
+
+    }
+
     private void startWorkout(Workout workout) {
         Intent intent = new Intent(MainActivity.this, WorkoutActivity.class);
         intent.putExtra("WORKOUT_OBJECT", workout);
@@ -271,6 +345,29 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         if (isBound && heartRateService != null) {
             heartRateService.disconnectDevice();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 1) {
+            boolean allGranted = true;
+
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (allGranted) {
+                System.out.println("Permissions granted! Starting BLE scan...");
+                clickBluetooth();
+            } else {
+                System.out.println("Permissions denied. Cannot scan for BLE devices.");
+            }
         }
     }
 

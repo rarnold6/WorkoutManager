@@ -50,6 +50,10 @@ public class Workout implements Serializable {
 
     private long endTimestamp;
 
+    public void setStartTimestamp(long timestamp){
+        this.startTimestamp = timestamp;
+    }
+
     public long getStartTimestamp() {
         return startTimestamp;
     }

@@ -63,8 +63,6 @@ public class BLEScannerActivity extends AppCompatActivity {
 
     private BroadcastReceiver heartRateReceiver;
 
-    private BroadcastReceiver bleConnectedReceiver;
-
     private boolean connected;
 
     private BluetoothDevice bluetoothDeviceConnecting;
@@ -94,6 +92,7 @@ public class BLEScannerActivity extends AppCompatActivity {
     };
 
 
+    @SuppressLint("NewApi")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -142,22 +141,29 @@ public class BLEScannerActivity extends AppCompatActivity {
                     //System.out.println("Received Heart Rate: " + heartRate);
                     // Update UI here
                     tvHeartFrequency.setText("Heart Rate: " + heartRate + " bpm");
+                } else if ("com.example.BLE_CONNECTED_UPDATE".equals(intent.getAction())) {
+                    System.out.println("RECEIVING BLE CONNECTED");
+                    boolean bleConnectedUpdate = intent.getBooleanExtra("CONNECTED", false);
+                    System.out.println("Received BLE_CONNECTED_UPADTE: " + bleConnectedUpdate);
+                    // Update UI here
+                    if(!bleConnectedUpdate){
+                        startUI();
+                        tvEmptyViewScanDevices.setText("Scan for devices!");
+                        btnScanForDevices.setText("Scan for your device");
+                        connected = false;
+                        scanning = false;
+                        Toast.makeText(context,"Connection failed. See more in the settings!",Toast.LENGTH_LONG).show();
+                    }
+
                 }
             }
         };
 
-        bleConnectedReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if ("com.example.BLE_CONNECTED_UPDATE".equals(intent.getAction())) {
-                    System.out.println("RECEIVING BLE CONNECTED");
-                    connected = intent.getBooleanExtra("CONNECTED", false);
-                    System.out.println("Received BLE_CONNECTED_UPADTE: " + connected);
-                    // Update UI here
-                    connectedUI();
-                }
-            }
-        };
+        // Register the BroadcastReceiver
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("com.example.BLE_HEART_RATE_UPDATE");
+        filter.addAction("com.example.BLE_CONNECTED_UPDATE");
+        registerReceiver(heartRateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
 
 
 
@@ -184,6 +190,10 @@ public class BLEScannerActivity extends AppCompatActivity {
                         Toast.makeText(getApplicationContext(), "Disconnected from device", Toast.LENGTH_SHORT).show();
                     }
                 } else {
+                        if (!BLEPermissionUtils.hasPermissions(getApplicationContext())) {
+                            BLEPermissionUtils.requestPermissions(BLEScannerActivity.this);
+                            return;
+                        }
                         scanning = true;
                         // start scanning for BLE devices
                         startScan();
@@ -195,7 +205,19 @@ public class BLEScannerActivity extends AppCompatActivity {
         });
     }
 
-    @SuppressLint("MissingPermission")
+    void startUI(){
+        tvEmptyViewScanDevices.setText("Scan for devices!");
+        btnScanForDevices.setText("Scan for your device");
+        bleDevicesAdapter.removeAllDevices();
+        bleDevicesAdapter.notifyDataSetChanged();
+
+        lvAvailableDevices.setVisibility(View.VISIBLE);
+
+        llLoading.setVisibility(View.GONE);
+
+        llHeartFrequency.setVisibility(View.GONE);
+    }
+
     void scanningUI(){
         lvAvailableDevices.setVisibility(View.VISIBLE);
         tvAvailableDevices.setText("Available devices:");
@@ -224,33 +246,32 @@ public class BLEScannerActivity extends AppCompatActivity {
         llLoading.setVisibility(View.GONE);
 
         tvAvailableDevices.setText("Connected device:");
-        tvConntectedToBLE.setText(bluetoothDeviceConnecting.getName());
+        if(bluetoothDeviceConnecting == null){
+            // if heartRateSensor was already connected
+            SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
+            tvConntectedToBLE.setText(secureStorageHelper.getHeartRateSensor());
+            connected = true;
+        } else {
+
+
+            tvConntectedToBLE.setText(bluetoothDeviceConnecting.getName());
+            SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
+            secureStorageHelper.saveSensor(bluetoothDeviceConnecting.getName(),bluetoothDeviceConnecting.getAddress());
+        }
         llHeartFrequency.setVisibility(View.VISIBLE);
         btnScanForDevices.setText("Disconnect device");
-
-        SecureStorageHelper secureStorageHelper = new SecureStorageHelper(getApplicationContext());
-        secureStorageHelper.saveSensor(bluetoothDeviceConnecting.getName(),bluetoothDeviceConnecting.getAddress());
 
     }
 
     // Start scanning
     @SuppressLint("MissingPermission")
     public void startScan() {
-        // Check if permissions are granted
-        if (!BLEPermissionUtils.hasPermissions(this.getApplicationContext())) {
-            BLEPermissionUtils.requestPermissions(this);
-            return; // Exit and wait for the user response
-        }
         bluetoothLeScanner.startScan(scanCallback);
     }
 
     // Stop scanning
     @SuppressLint("MissingPermission")
     public void stopScan() {
-        if (!BLEPermissionUtils.hasPermissions(this.getApplicationContext())) {
-            BLEPermissionUtils.requestPermissions(this);
-            return; // Exit and wait for the user response
-        }
         bluetoothLeScanner.stopScan(scanCallback);
     }
 
@@ -316,7 +337,10 @@ public class BLEScannerActivity extends AppCompatActivity {
 
             if (allGranted) {
                 System.out.println("Permissions granted! Starting BLE scan...");
-                startScan(); // Restart the scan or required process
+                startScan();
+                scanning = true;
+                tvEmptyViewScanDevices.setText("Scanning for devices...");
+                btnScanForDevices.setText("Stop scanning");
             } else {
                 System.out.println("Permissions denied. Cannot scan for BLE devices.");
             }
@@ -336,14 +360,15 @@ public class BLEScannerActivity extends AppCompatActivity {
         super.onResume();
         IntentFilter filter = new IntentFilter("com.example.BLE_HEART_RATE_UPDATE");
         registerReceiver(heartRateReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        registerReceiver(bleConnectedReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         unregisterReceiver(heartRateReceiver);
-        unregisterReceiver(bleConnectedReceiver);
+        scanning = false;
+        stopScan();
     }
 
     @Override
@@ -353,6 +378,8 @@ public class BLEScannerActivity extends AppCompatActivity {
             unbindService(serviceConnection);
             isBound = false;
         }
+        scanning = false;
+        stopScan();
     }
 
     @Override
@@ -361,6 +388,8 @@ public class BLEScannerActivity extends AppCompatActivity {
         if (isBound && heartRateService != null) {
             heartRateService.disconnectDevice();
         }
+        scanning = false;
+        stopScan();
     }
 
 

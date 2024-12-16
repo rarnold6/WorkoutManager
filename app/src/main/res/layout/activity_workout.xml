@@ -106,6 +106,15 @@
             android:src="@android:drawable/stat_sys_data_bluetooth"
             app:tint="@color/black" />
 
+        <ProgressBar
+            android:id="@+id/pbBluetoothWorkout"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:layout_gravity="center_horizontal"
+            android:visibility="gone"
+            />
+
         <TextView
             android:id="@+id/tvBluetoothWorkout"
             android:layout_width="wrap_content"

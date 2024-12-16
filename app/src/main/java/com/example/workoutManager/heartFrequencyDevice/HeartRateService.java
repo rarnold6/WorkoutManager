@@ -60,6 +60,7 @@ public class HeartRateService extends Service {
                 readHeartRateCharacteristic(gatt);
             } else {
                 System.out.println("Service discovery failed with status: " + status);
+                sendTimeExceededUpdate();
             }
         }
 
@@ -90,6 +91,7 @@ public class HeartRateService extends Service {
         // Connect to the GATT server on the BLE device
         bluetoothGatt = device.connectGatt(this, false, gattCallback);
         if(bluetoothGatt != null) {
+            System.out.println("Connected To: " + device.getName());
             isConnected = true;
             sendConnectedUpdate();
         }
@@ -135,6 +137,12 @@ public class HeartRateService extends Service {
         System.out.println("SEND CONNECTED:" + isConnected);
         Intent intent = new Intent("com.example.BLE_CONNECTED_UPDATE");
         intent.putExtra("CONNECTED", isConnected);
+        sendBroadcast(intent);
+    }
+
+    private void sendTimeExceededUpdate(){
+        System.out.println("Time exceeded: " + isConnected);
+        Intent intent = new Intent("com.example.TIME_EXCEEDED_NOT_CONNECTED");
         sendBroadcast(intent);
     }
 
