@@ -6,6 +6,7 @@ import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 
 import androidx.annotation.NonNull;
@@ -70,12 +71,42 @@ public class WorkoutProvider extends ContentProvider {
                     null,
                     null,
                     sortOrder);
+        } else if(match == URI_PREDEFINED_WORKOUT){
+            SQLiteQueryBuilder queryBuilder = getSQLiteQueryBuilderForPredefinedWorkouts();
+
+            // Execute the query
+            cursor = queryBuilder.query(
+                    database,                 // Database instance
+                    projection,         // Columns to return
+                    selection,          // WHERE clause
+                    selectionArgs,      // WHERE arguments
+                    null,               // GROUP BY
+                    null,               // HAVING
+                    sortOrder           // ORDER BY
+            );
+        } else if(match == URI_EXERCISES){
+            cursor = database.query(WorkoutContract.ExerciseEntry.TABLE_EXERCISE,
+                    projection,
+                    selection,
+                    selectionArgs,
+                    null,
+                    null,
+                    sortOrder);
         }
 
         if(cursor != null) {
             cursor.setNotificationUri(Objects.requireNonNull(getContext()).getContentResolver(), uri);
         }
         return cursor;
+    }
+
+    @NonNull
+    private static SQLiteQueryBuilder getSQLiteQueryBuilderForPredefinedWorkouts() {
+        SQLiteQueryBuilder queryBuilder = new SQLiteQueryBuilder();
+        queryBuilder.setTables(WorkoutContract.PredefinedWorkoutEntry.TABLE_PREDEFINED_WORKOUT + " " +
+                "INNER JOIN " + WorkoutContract.WorkoutExercisesEntry.TABLE_WORKOUT_EXERCISE + " ON " + WorkoutContract.PredefinedWorkoutEntry.TABLE_PREDEFINED_WORKOUT + "." + WorkoutContract.PredefinedWorkoutEntry.COLUMN_PREDEFINED_WORKOUT_ID + " = " + WorkoutContract.WorkoutExercisesEntry.TABLE_WORKOUT_EXERCISE + "." + WorkoutContract.WorkoutExercisesEntry.COLUMN_WORKOUT_EXERCISE_WORKOUT_ID + " " +
+                "INNER JOIN " + WorkoutContract.ExerciseEntry.TABLE_EXERCISE + " ON " + WorkoutContract.WorkoutExercisesEntry.TABLE_WORKOUT_EXERCISE + "." + WorkoutContract.WorkoutExercisesEntry.COLUMN_WORKOUT_EXERCISE_EXERCISE_ID + " = " + WorkoutContract.ExerciseEntry.TABLE_EXERCISE + "." + WorkoutContract.ExerciseEntry.COLUMN_EXERCISE_ID);
+        return queryBuilder;
     }
 
     @Nullable

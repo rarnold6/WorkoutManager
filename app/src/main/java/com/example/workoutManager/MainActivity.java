@@ -11,6 +11,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -35,7 +36,10 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.example.workoutManager.data.Exercise;
 import com.example.workoutManager.data.Workout;
+import com.example.workoutManager.data.WorkoutDate;
+import com.example.workoutManager.database.WorkoutContract;
 import com.example.workoutManager.heartFrequencyDevice.BLEPermissionUtils;
 import com.example.workoutManager.heartFrequencyDevice.BLEScannerActivity;
 import com.example.workoutManager.heartFrequencyDevice.HeartRateService;
@@ -44,6 +48,7 @@ import com.example.workoutManager.stravaConnection.SecureStorageHelper;
 import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -61,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean isBound = false;
 
     private HeartRateService heartRateService;
+
+    private LinkedList<Workout> predefinedWorkouts = new LinkedList<>();
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -96,6 +103,57 @@ public class MainActivity extends AppCompatActivity {
         registerButton();
         registerBluetooth();
         registerSpinner();
+        //retrievePredefinedWorkouts();
+    }
+
+    @SuppressLint("Range")
+    private void retrievePredefinedWorkouts() {
+        try (Cursor cursorPredefinedWorkouts = getContentResolver().query(WorkoutContract.PredefinedWorkoutEntry.CONTENT_URI_PREDEFINED_WORKOUT,
+                new String[]{"*"},
+                null,
+                null,
+                WorkoutContract.PredefinedWorkoutEntry.TABLE_PREDEFINED_WORKOUT + "." + WorkoutContract.PredefinedWorkoutEntry.COLUMN_PREDEFINED_WORKOUT_ID + " ASC")) {
+            if(cursorPredefinedWorkouts != null) {
+                int predefinedWorkoutIDBefore = -2;
+                LinkedList<Exercise> exercises = new LinkedList<>();
+                String title = "";
+                int exerciseDuration = -1;
+                int recoveryTime = -1;
+                int breakTime = -1;
+                int numberOfSets = -1;
+                int numberOfExercises = -1;
+
+                while (cursorPredefinedWorkouts.moveToNext()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+                        int predefinedWorkoutID = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.TABLE_PREDEFINED_WORKOUT + "." + WorkoutContract.PredefinedWorkoutEntry.COLUMN_PREDEFINED_WORKOUT_ID));
+
+                        if(predefinedWorkoutIDBefore != predefinedWorkoutID){
+                            if(predefinedWorkoutIDBefore != -2) {
+                                Workout workout = new Workout(title, exerciseDuration, recoveryTime, breakTime, numberOfSets, numberOfExercises, exercises);
+                                this.predefinedWorkouts.add(workout);
+                            }
+                            predefinedWorkoutIDBefore = predefinedWorkoutID;
+                            exercises = new LinkedList<>();
+                            title = cursorPredefinedWorkouts.getString(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.TABLE_PREDEFINED_WORKOUT + "." + WorkoutContract.PredefinedWorkoutEntry.COLUMN_WORKOUT_TITLE));
+                            exerciseDuration = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.COLUMN_EXERCISE_DURATION));
+                            recoveryTime = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.COLUMN_RECOVERY_TIME));
+                            breakTime = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.COLUMN_BREAK_TIME));
+                            numberOfSets = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.COLUMN_NUMBER_OF_SETS));
+                            numberOfExercises = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.PredefinedWorkoutEntry.COLUMN_NUMBER_OF_EXERCISES));
+                        }
+
+                        String name = cursorPredefinedWorkouts.getString(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.ExerciseEntry.TABLE_EXERCISE + "." + WorkoutContract.ExerciseEntry.COLUMN_EXERCISE_TITLE));
+                        String description = cursorPredefinedWorkouts.getString(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.ExerciseEntry.COLUMN_EXERCISE_DESCRIPTION));
+                        int difficulty = cursorPredefinedWorkouts.getInt(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.ExerciseEntry.COLUMN_EXERCISE_DIFFICULTY));
+                        String category = cursorPredefinedWorkouts.getString(cursorPredefinedWorkouts.getColumnIndex(WorkoutContract.ExerciseEntry.COLUMN_EXERCISE_CATEGORY));
+
+                        Exercise exercise = new Exercise(name,description,difficulty,category);
+                        exercises.add(exercise);
+                    }
+                }
+            }
+        }
     }
 
     @SuppressLint("NewApi")

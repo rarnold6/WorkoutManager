@@ -39,6 +39,16 @@ public class WorkoutContract {
         public static final String COLUMN_PREDEFINED_WORKOUT_ID = "id";
         public static final String COLUMN_WORKOUT_TITLE = "title";
 
+        public static final String COLUMN_EXERCISE_DURATION = "exercise_duration";
+
+        public static final String COLUMN_RECOVERY_TIME = "recovery_time";
+
+        public static final String COLUMN_BREAK_TIME = "break_time";
+
+        public static final String COLUMN_NUMBER_OF_SETS = "number_of_sets";
+
+        public static final String COLUMN_NUMBER_OF_EXERCISES = "number_of_exercises";
+
         public static final String CONTENT_LIST_TYPE_PREDEFINED_WORKOUT =
                 ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_PREDEFINED_WORKOUT;
         public static final String CONTENT_ITEM_TYPE_PREDEFINED_WORKOUT =
@@ -54,6 +64,10 @@ public class WorkoutContract {
         public static final String COLUMN_EXERCISE_ID = "id";
         public static final String COLUMN_EXERCISE_TITLE = "title";
         public static final String COLUMN_EXERCISE_DESCRIPTION = "description";
+
+        public static final String COLUMN_EXERCISE_DIFFICULTY = "difficulty";
+
+        public static final String COLUMN_EXERCISE_CATEGORY = "category";
 
         public static final String CONTENT_LIST_TYPE_EXERCISE =
                 ContentResolver.CURSOR_DIR_BASE_TYPE + "/" + CONTENT_AUTHORITY + "/" + PATH_EXERCISES;

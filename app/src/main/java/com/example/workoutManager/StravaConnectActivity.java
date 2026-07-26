@@ -54,8 +54,8 @@ import java.util.concurrent.Executors;
 
 public class StravaConnectActivity extends AppCompatActivity {
 
-    private static final String CLIENT_ID = "xxx"; // Replace with your Strava Client ID
-    private static final String CLIENT_SECRET = "xxx"; // Replace with your Strava Client Secret
+    private static final String CLIENT_ID = "139499"; // Replace with your Strava Client ID
+    private static final String CLIENT_SECRET = "10dfdd2304497a9f8abe7c7665670c6ba98b843e"; // Replace with your Strava Client Secret
     private static final String REDIRECT_URI = "workoutmanager://workoutmanager"; // Replace with your redirect URI
 
     private static final String TAG = "StravaConnectActivity";

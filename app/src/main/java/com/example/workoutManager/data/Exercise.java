@@ -5,10 +5,15 @@ public class Exercise {
     private String name;
     private String description;
 
+    private int difficulty;
+    private String category;
 
-    public Exercise(String name, String description) {
+
+    public Exercise(String name, String description, int difficulty, String category) {
         this.name = name;
         this.description = description;
+        this.difficulty = difficulty;
+        this.category = category;
     }
 
     public String getName() {
@@ -25,5 +30,21 @@ public class Exercise {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public int getDifficulty() {
+        return difficulty;
+    }
+
+    public void setDifficulty(int difficulty) {
+        this.difficulty = difficulty;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
     }
 }

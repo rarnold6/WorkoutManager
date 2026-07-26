@@ -1,6 +1,7 @@
 package com.example.workoutManager.data;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 
 public class Workout implements Serializable {
     public int getExerciseDuration() {
@@ -35,6 +36,8 @@ public class Workout implements Serializable {
         return currentPhase;
     }
 
+
+    private String title;
     private int exerciseDuration; // in seconds
     private int recoveryTime; // in seconds
     private int breakTime; // in seconds
@@ -50,6 +53,8 @@ public class Workout implements Serializable {
 
     private long endTimestamp;
 
+    private LinkedList<Exercise> exercises;
+
     public void setStartTimestamp(long timestamp){
         this.startTimestamp = timestamp;
     }
@@ -64,6 +69,14 @@ public class Workout implements Serializable {
 
     public void setEndTimestamp(long endTimestamp) {
         this.endTimestamp = endTimestamp;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
 
@@ -84,6 +97,23 @@ public class Workout implements Serializable {
         this.currentNumberOfSet = 1;
         this.startTimestamp = startTimestamp;
         this.endTimestamp = -1;
+        // Set the default phase
+        currentPhase = WorkoutPhase.WARMUP;
+    }
+
+    // to init a predefined workout
+    public Workout(String title, int exerciseDuration, int recoveryTime, int breakTime, int numberOfSets, int numberOfExercisesPerSet, LinkedList<Exercise> exercises) {
+        this.title = title;
+        this.exerciseDuration = exerciseDuration;
+        this.recoveryTime = recoveryTime;
+        this.breakTime = breakTime;
+        this.numberOfSets = numberOfSets;
+        this.numberOfExercisesPerSet = numberOfExercisesPerSet;
+        this.currentNumberOfExercise = 0;
+        this.currentNumberOfSet = 1;
+        this.startTimestamp = -1;
+        this.endTimestamp = -1;
+        this.exercises = exercises;
         // Set the default phase
         currentPhase = WorkoutPhase.WARMUP;
     }
